@@ -1,0 +1,10 @@
+{
+  "name": "yt-comment-analyzer-root",
+  "private": true,
+  "scripts": {
+    "start-all": "concurrently \"cd backend && python main.py\" \"cd frontend && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

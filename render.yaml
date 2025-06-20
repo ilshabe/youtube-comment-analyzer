@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: youtube-comment-analyzer
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: YOUTUBE_API_KEY
+        value: AIzaSyDWQrXquS5_nBWdf-5nnJT5pQNB4heh7Q8
+      - key: GEMINI_API_KEYS
+        value: "AIzaSyB9DLY9MiEx21zUXOWuTPU8tqo_sbrxr_8,AIzaSyC-11u9fwgtfK3mLjYDezerzbqUqa67Yps,AIzaSyAx9IrgubWTwB1ELYAQ6-wu2X24crdxdjk,AIzaSyBRm-3gh5VG2oxgPNq_m9_bcEmUOmEgYZ0,AIzaSyBdWKjNY2yZ7087a3Rm0gNsKyQAuCKmb5M,AIzaSyC6-QOpgF_7D9gAvo9CiJ8ehTf0uNMKrPE,AIzaSyBitJDtoH-Cc7EepzdgyroESOO9p_FW564,AIzaSyCO-kKSTC64KpcaB-a8o27Y85Y5dcIpd-I,AIzaSyBPG6CXxoahn7Xt3umb4rMUw2L-QPUMQHM,AIzaSyAVcxyvGYuJJ2nuNuomUoXZHve4iDHgUMY,AIzaSyAk7pbBiFzlzeqlwWKorl0HQKJftwS4es8"
