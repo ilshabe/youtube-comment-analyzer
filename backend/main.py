@@ -55,21 +55,15 @@ else:
     safe_print("No frontend directory found")
 
 # Загружаем переменные окружения
-# Сначала пробуем .env.local (для разработки), потом .env (для продакшена)
+# Для разработки используем .env.local, для продакшена - системные переменные
 if os.path.exists('.env.local'):
     try:
         load_dotenv('.env.local')
         safe_print("Loaded environment from .env.local (development)")
     except UnicodeDecodeError:
         safe_print("Warning: .env.local file has encoding issues, using system environment variables")
-elif os.path.exists('.env'):
-    try:
-        load_dotenv('.env')
-        safe_print("Loaded environment from .env (production)")
-    except UnicodeDecodeError:
-        safe_print("Warning: .env file has encoding issues, using system environment variables")
 else:
-    safe_print("No .env file found, using system environment variables")
+    safe_print("Using system environment variables (production)")
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
