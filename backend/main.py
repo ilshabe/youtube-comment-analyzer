@@ -38,8 +38,14 @@ app.add_middleware(
 )
 
 # Подключаем статические файлы (фронтенд)
-# Проверяем разные возможные пути к фронтенду
-if os.path.exists("../frontend"):
+# Проверяем разные возможные пути к собранному фронтенду
+if os.path.exists("../frontend/dist"):
+    app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")
+    safe_print("Frontend mounted from ../frontend/dist")
+elif os.path.exists("../frontend/build"):
+    app.mount("/", StaticFiles(directory="../frontend/build", html=True), name="frontend")
+    safe_print("Frontend mounted from ../frontend/build")
+elif os.path.exists("../frontend"):
     app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
     safe_print("Frontend mounted from ../frontend")
 elif os.path.exists("static"):
@@ -440,8 +446,8 @@ async def serve_frontend(full_path: str):
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="API endpoint not found")
     
-    # Проверяем разные возможные пути к фронтенду
-    frontend_paths = ["../frontend", "static", "frontend"]
+    # Проверяем разные возможные пути к собранному фронтенду
+    frontend_paths = ["../frontend/dist", "../frontend/build", "../frontend", "static", "frontend"]
     
     for frontend_dir in frontend_paths:
         file_path = f"{frontend_dir}/{full_path}"
