@@ -144,6 +144,10 @@ async def root():
         "gemini_model": gemini_service.model_name if gemini_service.model else None
     }
 
+@app.get("/api/test")
+async def test_endpoint():
+    return {"status": "API is working!", "timestamp": "2025-01-01"}
+
 @app.get("/api/analyze")
 async def analyze_comments(video_id: str):
     """
@@ -492,6 +496,13 @@ async def serve_spa_routes(full_path: str):
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Выводим информацию о зарегистрированных роутах
+    safe_print("🔧 Registered routes:")
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            safe_print(f"  {route.methods} {route.path}")
+    
     # Render автоматически устанавливает PORT, локально используем 8000
     port = int(os.environ.get("PORT", 8000))
     print(f"🚀 Starting YouTube Comment Analyzer on port {port}")
