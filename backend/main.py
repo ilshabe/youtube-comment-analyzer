@@ -38,8 +38,15 @@ app.add_middleware(
 )
 
 # Подключаем статические файлы (фронтенд)
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+# Проверяем разные возможные пути к фронтенду
+if os.path.exists("../frontend"):
+    app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
+    safe_print("Frontend mounted from ../frontend")
+elif os.path.exists("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+    safe_print("Frontend mounted from static")
+else:
+    safe_print("No frontend directory found")
 
 # Загружаем переменные окружения
 # Сначала пробуем .env.local (для разработки), потом .env (для продакшена)
@@ -433,16 +440,21 @@ async def serve_frontend(full_path: str):
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="API endpoint not found")
     
-    # Проверяем, существует ли файл
-    file_path = f"static/{full_path}"
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        return FileResponse(file_path)
+    # Проверяем разные возможные пути к фронтенду
+    frontend_paths = ["../frontend", "static", "frontend"]
+    
+    for frontend_dir in frontend_paths:
+        file_path = f"{frontend_dir}/{full_path}"
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
     
     # Возвращаем index.html для SPA маршрутизации
-    if os.path.exists("static/index.html"):
-        return FileResponse("static/index.html")
+    for frontend_dir in frontend_paths:
+        index_path = f"{frontend_dir}/index.html"
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
     
-    raise HTTPException(status_code=404, detail="File not found")
+    raise HTTPException(status_code=404, detail="Frontend not found")
 
 if __name__ == "__main__":
     import uvicorn
