@@ -120,6 +120,13 @@ class GeminiService:
                         raise retry_error  # Перебрасываем ошибку если все попытки исчерпаны
             
             if response.text:
+                # После успешного использования ключа, перемещаем его в конец для ротации
+                if len(self.api_keys) > 1:
+                    current_key = self.api_keys.pop(self.current_key_index)
+                    self.api_keys.append(current_key)
+                    self.current_key_index = 0
+                    print(f"Key rotated after successful use. Next key ready.")
+                
                 return {
                     "success": True,
                     "analysis": response.text,
@@ -187,12 +194,17 @@ class GeminiService:
         
         video_title = video_info.get('title', 'Неизвестно')
         channel_name = video_info.get('channel_title', 'Неизвестно')
-        views = video_info.get('views', 0)
-        likes = video_info.get('likes', 0)
+        views = video_info.get('view_count', 0)
+        likes = video_info.get('like_count', 0)
         
         prompt = f"""Проведи детальный анализ YouTube видео на основе комментариев пользователей.
 
 ВИДЕО: {video_title} | Канал: {channel_name} | Просмотры: {views:,} | Лайки: {likes:,}
+
+ВАЖНЫЕ ИНСТРУКЦИИ:
+1) НЕ упоминай про "0 просмотров" или "0 лайков" - используй реальные цифры выше
+2) Начни анализ с фразы: "Анализ реакции аудитории на видео '{video_title}' канала {channel_name}. Видео набрало {views:,} просмотров и {likes:,} лайков."
+3) Сосредоточься на реальных комментариях пользователей
 
 {comments_text}
 

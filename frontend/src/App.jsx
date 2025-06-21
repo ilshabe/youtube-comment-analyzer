@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import axios from 'axios'
 import './App.css'
 import WordCloud from './components/WordCloud'
@@ -25,6 +25,55 @@ export default function App() {
     return num.toString()
   }
 
+  const formatDuration = (duration) => {
+    if (!duration) return 'N/A'
+    // Парсим ISO 8601 duration (PT10M30S -> 10:30)
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+    if (!match) return duration
+    
+    const hours = parseInt(match[1] || 0)
+    const minutes = parseInt(match[2] || 0)
+    const seconds = parseInt(match[3] || 0)
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      })
+    } catch {
+      return 'N/A'
+    }
+  }
+
+  const cleanCommentText = (text) => {
+    if (!text) return ''
+    
+    return text
+      // Убираем все виды ссылок
+      .replace(/https?:\/\/[^\s<>"']+/gi, '[ссылка]')
+      .replace(/www\.[^\s<>"']+/gi, '[ссылка]')
+      .replace(/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\/[^\s<>"']*/gi, '[ссылка]')
+      .replace(/bit\.ly\/[^\s<>"']*/gi, '[ссылка]')
+      .replace(/youtu\.be\/[^\s<>"']*/gi, '[ссылка]')
+      // Убираем HTML теги и атрибуты
+      .replace(/<[^>]*>/g, '')
+      .replace(/&[a-zA-Z0-9#]+;/g, '')
+      .replace(/href="[^"]*"/gi, '')
+      // Очищаем лишние пробелы
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
   const handleAnalyze = async () => {
     const videoId = getVideoId(videoUrl)
     if (!videoId) {
@@ -36,10 +85,11 @@ export default function App() {
     setGeminiAnalysis(null) // Сбрасываем предыдущий анализ Gemini
     try {
       console.log('Analyzing video ID:', videoId);
-      const apiUrl = window.location.hostname === 'localhost' ? 'http://localhost:8001' : '';
+      const apiUrl = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
       const res = await axios.get(`${apiUrl}/analyze?video_id=${videoId}`)
       console.log('API Response:', res.data);
       if (res.data.success) {
+        console.log('Channel avatar URL:', res.data.video_info.channel_avatar);
         setResult(res.data)
         showNotification('Analysis completed successfully!', 'success')
       } else {
@@ -78,7 +128,7 @@ export default function App() {
     try {
       showNotification('Starting Clever AI analysis... This may take up to 2 minutes.', 'info')
       
-      const apiUrl = window.location.hostname === 'localhost' ? 'http://localhost:8001' : '';
+      const apiUrl = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
       const res = await axios.post(`${apiUrl}/gemini-analysis`, {
         video_id: videoId
       }, {
@@ -217,6 +267,86 @@ export default function App() {
     )
   }
 
+  const VideoTags = ({ tags }) => {
+    const [showAllTags, setShowAllTags] = React.useState(false)
+    
+    if (!tags || tags.length === 0) return null
+    
+    const videoTagsStyle = {
+      margin: '1.5rem 0',
+      textAlign: 'center'
+    }
+    
+    const tagsTitleStyle = {
+      fontSize: '1.1rem',
+      color: 'var(--text-secondary)',
+      marginBottom: '1rem',
+      fontWeight: '600'
+    }
+    
+    const tagsContainerStyle = {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '0.75rem',
+      justifyContent: 'center',
+      maxWidth: '100%'
+    }
+    
+    const videoTagStyle = {
+      display: 'inline-block',
+      padding: '0.4rem 0.8rem',
+      background: 'var(--bg-secondary)',
+      color: 'var(--text-secondary)',
+      borderRadius: '12px',
+      fontSize: '0.8rem',
+      fontWeight: '500',
+      textTransform: 'lowercase',
+      letterSpacing: '0.2px',
+      transition: 'all 0.3s ease',
+      border: '1px solid var(--border-glass)',
+      cursor: 'default'
+    }
+    
+    const moreTagsStyle = {
+      ...videoTagStyle,
+      background: 'var(--bg-glass)',
+      color: 'var(--neon-cyan)',
+      border: '1px solid var(--border-neon)',
+      cursor: 'pointer'
+    }
+    
+    const displayTags = showAllTags ? tags : tags.slice(0, 8)
+    
+    return (
+      <div style={videoTagsStyle}>
+        <h4 style={tagsTitleStyle}>Video Tags</h4>
+        <div style={tagsContainerStyle}>
+          {displayTags.map((tag, index) => (
+            <span key={index} style={videoTagStyle}>
+              #{tag}
+            </span>
+          ))}
+          {tags.length > 8 && !showAllTags && (
+            <span 
+              style={moreTagsStyle}
+              onClick={() => setShowAllTags(true)}
+            >
+              +{tags.length - 8} more
+            </span>
+          )}
+          {showAllTags && tags.length > 8 && (
+            <span 
+              style={moreTagsStyle}
+              onClick={() => setShowAllTags(false)}
+            >
+              show less
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <div className="container">
@@ -260,7 +390,55 @@ export default function App() {
               <div className="video-info-grid">
                 <div className="video-details">
                   <h2 className="video-title">{result.video_info.title}</h2>
-                  <div className="video-stats">
+                  
+                  {/* Метаинформация о видео */}
+                  {(result.video_info.published_at || result.video_info.duration) && (
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '1.5rem',
+                      margin: '1rem 0 1.5rem 0',
+                      justifyContent: 'center'
+                    }}>
+                      {result.video_info.published_at && (
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.5rem 1rem',
+                          background: 'var(--bg-glass)',
+                          border: '1px solid var(--border-glass)',
+                          borderRadius: '12px',
+                          color: 'var(--text-secondary)',
+                          fontSize: '0.95rem',
+                          fontWeight: '500',
+                          transition: 'all 0.3s ease'
+                        }}>
+                          📅 Published: {formatDate(result.video_info.published_at)}
+                        </span>
+                      )}
+                      {result.video_info.duration && (
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.5rem 1rem',
+                          background: 'var(--bg-glass)',
+                          border: '1px solid var(--border-glass)',
+                          borderRadius: '12px',
+                          color: 'var(--text-secondary)',
+                          fontSize: '0.95rem',
+                          fontWeight: '500',
+                          transition: 'all 0.3s ease'
+                        }}>
+                          ⏱️ Duration: {formatDuration(result.video_info.duration)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Статистика видео */}
+                  <div className="video-stats" style={{justifyContent: 'center', gap: '1.5rem', margin: '1.5rem 0'}}>
                     <div className="stat-item">
                       <span className="stat-value">{formatNumber(result.video_info.views)}</span>
                       <span className="stat-label">views</span>
@@ -278,6 +456,9 @@ export default function App() {
                       <span className="stat-label">engagement</span>
                     </div>
                   </div>
+
+                  {/* Теги видео */}
+                  <VideoTags tags={result.video_info.tags} />
                 </div>
                 <div className="channel-card">
                   <ProfileCard
@@ -290,7 +471,9 @@ export default function App() {
                     enableTilt={true}
                     showUserInfo={true}
                     onContactClick={() => {
-                      console.log('Visit channel:', result.video_info.channel_title);
+                      // ИСПРАВЛЕНО: Используем channel_url из API
+                      const channelUrl = result.video_info.channel_url || `https://www.youtube.com/channel/${result.video_info.channel_id}`;
+                      window.open(channelUrl, '_blank', 'noopener,noreferrer');
                     }}
                   />
                 </div>
@@ -330,8 +513,8 @@ export default function App() {
                   {result.average_sentiment !== undefined && (
                     <div className="sentiment-average">
                       <span>Average Sentiment: </span>
-                      <span className="sentiment-score">
-                        {result.average_sentiment > 0 ? '+' : ''}{result.average_sentiment}
+                      <span className={`sentiment-score ${result.average_sentiment > 0.1 ? 'positive' : result.average_sentiment < -0.1 ? 'negative' : 'neutral'}`}>
+                        {result.average_sentiment > 0 ? '+' : ''}{result.average_sentiment.toFixed(2)}
                       </span>
                     </div>
                   )}
@@ -352,11 +535,18 @@ export default function App() {
                   <WordCloud keywords={result.keywords} title="Key Words Cloud" />
                 </div>
                 
-                {/* Список ключевых слов */}
-                <KeywordsList keywords={result.keywords} />
-                
-                {/* Популярные фразы */}
-                <PhrasesList phrases={result.phrases} />
+                {/* Ключевые слова и фразы в одной колонке */}
+                <div 
+                  className="keywords-phrases-wrapper"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2rem'
+                  }}
+                >
+                  <KeywordsList keywords={result.keywords} />
+                  <PhrasesList phrases={result.phrases} />
+                </div>
               </div>
             </section>
 
@@ -380,7 +570,9 @@ export default function App() {
                       </div>
                       <span className="comment-likes">{comment.likes} likes</span>
                     </div>
-                    <p className="comment-text">{comment.text}</p>
+                    <p className="comment-text">
+                      {cleanCommentText(comment.text)}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -464,13 +656,18 @@ export default function App() {
                     <div className="gemini-content">
                       <div 
                         className="gemini-analysis-text"
+                        style={{
+                          color: 'var(--text-primary)',
+                          lineHeight: '1.7',
+                          fontSize: '1rem'
+                        }}
                         dangerouslySetInnerHTML={{
                           __html: geminiAnalysis.gemini_analysis
                             .replace(/\n/g, '<br>')
-                            .replace(/## (.*?)$/gm, '<h3 class="analysis-heading">$1</h3>')
-                            .replace(/### (.*?)$/gm, '<h4 class="analysis-subheading">$1</h4>')
-                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                            .replace(/## (.*?)$/gm, '<h3 style="color: var(--text-primary); font-size: 1.3rem; font-weight: 600; margin: 2rem 0 1rem 0; border-bottom: 1px solid var(--border-glass); padding-bottom: 0.5rem;">$1</h3>')
+                            .replace(/### (.*?)$/gm, '<h4 style="color: var(--text-primary); font-size: 1.1rem; font-weight: 500; margin: 1.5rem 0 0.75rem 0;">$1</h4>')
+                            .replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--text-primary); font-weight: 600;">$1</strong>')
+                            .replace(/\*(.*?)\*/g, '<em style="color: var(--text-secondary); font-style: italic;">$1</em>')
                         }}
                       />
                     </div>
@@ -512,3 +709,5 @@ export default function App() {
     </div>
   )
 }
+
+

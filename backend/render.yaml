@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: youtube-comment-analyzer
+    env: python
+    region: oregon  # Выбираем регион для лучшей производительности
+    plan: free  # Бесплатный тариф
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: python main.py
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        generateValue: true  # Render автоматически установит порт
+      - key: YOUTUBE_API_KEY
+        sync: false  # Устанавливается вручную в панели Render
+      - key: GEMINI_API_KEY
+        sync: false  # Устанавливается вручную в панели Render
+      - key: GEMINI_API_KEYS
+        sync: false  # Устанавливается вручную в панели Render
+      - key: MAX_COMMENTS
+        value: 200
+      - key: MIN_COMMENT_LENGTH
+        value: 3
+      - key: DEBUG
+        value: false

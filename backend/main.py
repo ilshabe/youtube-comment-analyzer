@@ -8,7 +8,7 @@ from typing import Optional, Dict, List
 from dotenv import load_dotenv
 import os
 import re
-import random
+
 from urllib.parse import urlparse, parse_qs
 
 def safe_print(text):
@@ -42,14 +42,26 @@ if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Загружаем переменные окружения
-load_dotenv()
+# Сначала пробуем .env.local (для разработки), потом .env (для продакшена)
+if os.path.exists('.env.local'):
+    load_dotenv('.env.local')
+    safe_print("Loaded environment from .env.local (development)")
+elif os.path.exists('.env'):
+    load_dotenv('.env')
+    safe_print("Loaded environment from .env (production)")
+else:
+    safe_print("No .env file found, using system environment variables")
+
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_API_KEYS = os.getenv("GEMINI_API_KEYS", "")
-safe_print(f"YOUTUBE_API_KEY loaded: {YOUTUBE_API_KEY}")
-safe_print(f"GEMINI_API_KEY loaded: {GEMINI_API_KEY[:10]}..." if GEMINI_API_KEY else "GEMINI_API_KEY not loaded")
+
+# Безопасное логирование (не показываем полные ключи)
+safe_print(f"YOUTUBE_API_KEY loaded: {'✅ Yes' if YOUTUBE_API_KEY else '❌ No'}")
+safe_print(f"GEMINI_API_KEY loaded: {'✅ Yes' if GEMINI_API_KEY else '❌ No'}")
+safe_print(f"GEMINI_API_KEYS count: {len(GEMINI_API_KEYS.split(',')) if GEMINI_API_KEYS else 0}")
 safe_print(f"Current working directory: {os.getcwd()}")
-safe_print(f"Environment file exists: {os.path.exists('.env')}")
+safe_print(f"Environment: {'🚀 Production' if os.environ.get('PORT') else '🔧 Development'}")
 
 # Инициализируем сервисы
 sentiment_analyzer = SentimentAnalyzer()
@@ -83,8 +95,15 @@ def get_popular_comments(comments: List[Dict], top_k: int = 5) -> List[Dict]:
     if not comments:
         return []
     
-    # Сортируем по лайкам
-    sorted_comments = sorted(comments, key=lambda x: x.get('likes', 0), reverse=True)
+    # Фильтруем комментарии с лайками > 0 и сортируем по лайкам
+    liked_comments = [c for c in comments if c.get('likes', 0) > 0]
+    
+    if not liked_comments:
+        # Если нет лайкнутых комментариев, берем первые 5 по релевантности
+        sorted_comments = comments[:top_k]
+    else:
+        # Сортируем по лайкам (убывание)
+        sorted_comments = sorted(liked_comments, key=lambda x: x.get('likes', 0), reverse=True)
     
     popular = []
     for comment in sorted_comments[:top_k]:
@@ -123,6 +142,10 @@ async def analyze_comments(video_id: str):
         safe_print(f"Getting video info for: {video_id}")
         video_info = youtube_service.get_video_info(video_id)
         safe_print(f"Video info result: {video_info.get('title', 'N/A') if video_info else 'None'}")
+        if video_info:
+            safe_print(f"Channel avatar: {video_info.get('channel_avatar', 'None')}")
+            safe_print(f"Channel URL: {video_info.get('channel_url', 'None')}")
+            safe_print(f"Channel ID: {video_info.get('channel_id', 'None')}")
         if not video_info:
             raise HTTPException(status_code=404, detail="Video not found or unavailable")
         
@@ -158,12 +181,14 @@ async def analyze_comments(video_id: str):
                 "title": video_info['title'],
                 "channel": video_info.get('channel_title', 'Unknown'),
                 "channel_title": video_info.get('channel_title', 'Unknown'),
-                "channel_avatar": video_info.get('channel_avatar'),
+                "channel_avatar": video_info.get('channel_avatar') or f"https://ui-avatars.com/api/?name={video_info.get('channel_title', 'Channel').replace(' ', '+')}&size=240&background=ff0000&color=ffffff&bold=true",
+                "channel_url": video_info.get('channel_url', f"https://www.youtube.com/channel/{video_info.get('channel_id', '')}"),
                 "views": video_info['view_count'],
                 "likes": video_info['like_count'],
                 "comments": video_info['comment_count'],
                 "engagement_rate": engagement_rate,
                 "published_at": video_info.get('published_at', ''),
+                "duration": video_info.get('duration', ''),
                 "tags": video_info.get('tags', [])
             },
             "sentiment_analysis": sentiment_analysis['sentiment_analysis'],
@@ -275,7 +300,33 @@ async def health_check():
 
 @app.get("/ping")
 async def ping():
+    import time
     return {"message": "pong", "timestamp": time.time()}
+
+@app.get("/test-avatar/{video_id}")
+async def test_avatar(video_id: str):
+    """Тестирует получение аватара канала"""
+    try:
+        if not validate_video_id(video_id):
+            raise HTTPException(status_code=400, detail="Invalid video ID format")
+        
+        video_info = youtube_service.get_video_info(video_id)
+        if not video_info:
+            raise HTTPException(status_code=404, detail="Video not found")
+        
+        return {
+            "success": True,
+            "video_id": video_id,
+            "channel_title": video_info.get('channel_title'),
+            "channel_id": video_info.get('channel_id'),
+            "channel_avatar": video_info.get('channel_avatar'),
+            "channel_url": video_info.get('channel_url'),
+            "fallback_avatar": f"https://ui-avatars.com/api/?name={video_info.get('channel_title', 'Channel').replace(' ', '+')}&size=240&background=ff0000&color=ffffff&bold=true"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.get("/test-gemini")
 async def test_gemini():
@@ -354,6 +405,8 @@ async def gemini_analysis(data: dict):
             "video_info": {
                 "title": video_info['title'],
                 "channel": video_info.get('channel_title', 'Unknown'),
+                "channel_avatar": video_info.get('channel_avatar') or f"https://ui-avatars.com/api/?name={video_info.get('channel_title', 'Channel').replace(' ', '+')}&size=240&background=ff0000&color=ffffff&bold=true",
+                "channel_url": video_info.get('channel_url', f"https://www.youtube.com/channel/{video_info.get('channel_id', '')}"),
                 "views": video_info['view_count'],
                 "likes": video_info['like_count'],
                 "comments_analyzed": len(comments)
@@ -367,35 +420,6 @@ async def gemini_analysis(data: dict):
     except Exception as e:
         safe_print(f"Error in gemini_analysis: {e}")
         raise HTTPException(status_code=500, detail=f"Error during Gemini analysis: {str(e)}")
-
-@app.get("/test-nlp")
-async def test_nlp():
-    """
-    Тестовый endpoint для проверки работы NLP модулей
-    """
-    test_comments = [
-        {"text": "This video is absolutely amazing! Great work!", "author": "@test1", "likes": 10},
-        {"text": "Это видео просто потрясающее! Отличная работа!", "author": "@test2", "likes": 8},
-        {"text": "I don't understand this part. Can you explain?", "author": "@test3", "likes": 3},
-        {"text": "Не понимаю эту часть. Можете объяснить?", "author": "@test4", "likes": 2},
-        {"text": "This doesn't work for me. Very frustrating.", "author": "@test5", "likes": 1},
-        {"text": "У меня не работает. Очень расстраивает.", "author": "@test6", "likes": 0}
-    ]
-    
-    # Тестируем анализ тональности
-    sentiment_result = sentiment_analyzer.analyze_comments(test_comments)
-    
-    # Тестируем извлечение ключевых слов
-    keyword_result = keyword_extractor.analyze_keywords(
-        test_comments, 
-        sentiment_result.get('language_distribution', {})
-    )
-    
-    return {
-        "sentiment_analysis": sentiment_result,
-        "keyword_analysis": keyword_result,
-        "test_status": "NLP modules working correctly"
-    }
 
 @app.get("/{full_path:path}")
 async def serve_frontend(full_path: str):
@@ -416,6 +440,8 @@ async def serve_frontend(full_path: str):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 10000))  # Render использует порт 10000 по умолчанию
-    print(f"Starting server on port {port}")
+    # Render автоматически устанавливает PORT, локально используем 8000
+    port = int(os.environ.get("PORT", 8000))
+    print(f"🚀 Starting YouTube Comment Analyzer on port {port}")
+    print(f"🌐 Environment: {'Production' if os.environ.get('PORT') else 'Development'}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
