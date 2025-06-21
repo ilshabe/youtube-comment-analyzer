@@ -138,20 +138,7 @@ def get_popular_comments(comments: List[Dict], top_k: int = 5) -> List[Dict]:
     
     return popular
 
-@app.get("/api/")
-async def root():
-    return {
-        "message": "YouTube Comment Analyzer API - Enhanced with Real NLP",
-        "youtube_api_available": youtube_service.youtube is not None,
-        "gemini_api_available": gemini_service.model is not None,
-        "gemini_model": gemini_service.model_name if gemini_service.model else None
-    }
-
-@app.get("/api/test")
-async def test_endpoint():
-    return {"status": "API is working!", "timestamp": "2025-01-01"}
-
-@app.get("/api/analyze")
+@app.get("/analyze")
 async def analyze_comments(video_id: str):
     """
     Анализирует комментарии к YouTube видео с реальным NLP анализом
@@ -248,7 +235,7 @@ async def analyze_comments(video_id: str):
         safe_print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error analyzing comments: {str(e)}")
 
-@app.post("/api/analyze-url")
+@app.post("/analyze-url")
 async def analyze_by_url(data: dict):
     """
     Анализирует комментарии по полному URL YouTube видео
@@ -271,7 +258,7 @@ async def analyze_by_url(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing URL: {str(e)}")
 
-@app.get("/api/keywords/{video_id}")
+@app.get("/keywords/{video_id}")
 async def get_keywords_only(video_id: str):
     """
     Возвращает только ключевые слова для видео (быстрый анализ)
@@ -306,7 +293,7 @@ async def get_keywords_only(video_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error extracting keywords: {str(e)}")
 
-@app.get("/api/health")
+@app.get("/health")
 async def health_check():
     return {
         "status": "healthy", 
@@ -324,12 +311,12 @@ async def health_check():
         ]
     }
 
-@app.get("/api/ping")
+@app.get("/ping")
 async def ping():
     import time
     return {"message": "pong", "timestamp": time.time()}
 
-@app.get("/api/test-avatar/{video_id}")
+@app.get("/test-avatar/{video_id}")
 async def test_avatar(video_id: str):
     """Тестирует получение аватара канала"""
     try:
@@ -354,7 +341,7 @@ async def test_avatar(video_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-@app.get("/api/test-gemini")
+@app.get("/test-gemini")
 async def test_gemini():
     """Тестирует подключение к Gemini API"""
     result = gemini_service.test_connection()
@@ -363,7 +350,7 @@ async def test_gemini():
     else:
         raise HTTPException(status_code=500, detail=result['message'])
 
-@app.get("/api/gemini-status")
+@app.get("/gemini-status")
 async def gemini_status():
     """Проверяет статус и квоты Gemini API"""
     try:
@@ -388,7 +375,7 @@ async def gemini_status():
             "model_initialized": False
         }
 
-@app.post("/api/gemini-analysis")
+@app.post("/gemini-analysis")
 async def gemini_analysis(data: dict):
     """
     Анализирует видео и комментарии через Gemini AI
