@@ -55,15 +55,21 @@ else:
     safe_print("No frontend directory found")
 
 # Загружаем переменные окружения
-# Для разработки используем .env.local, для продакшена - системные переменные
+# Сначала пробуем .env.local (для разработки), потом .env (для продакшена)
 if os.path.exists('.env.local'):
     try:
         load_dotenv('.env.local')
         safe_print("Loaded environment from .env.local (development)")
     except UnicodeDecodeError:
         safe_print("Warning: .env.local file has encoding issues, using system environment variables")
+elif os.path.exists('.env'):
+    try:
+        load_dotenv('.env')
+        safe_print("Loaded environment from .env (production)")
+    except UnicodeDecodeError:
+        safe_print("Warning: .env file has encoding issues, using system environment variables")
 else:
-    safe_print("Using system environment variables (production)")
+    safe_print("No .env file found, using system environment variables")
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -434,21 +440,49 @@ async def gemini_analysis(data: dict):
         safe_print(f"Error in gemini_analysis: {e}")
         raise HTTPException(status_code=500, detail=f"Error during Gemini analysis: {str(e)}")
 
-@app.get("/{full_path:path}")
-async def serve_frontend(full_path: str):
-    """Обслуживает фронтенд для всех остальных маршрутов"""
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API endpoint not found")
-    
-    # Проверяем разные возможные пути к собранному фронтенду
+# Обслуживаем статические файлы фронтенда
+@app.get("/assets/{file_path:path}")
+async def serve_assets(file_path: str):
+    """Обслуживает статические ресурсы фронтенда"""
     frontend_paths = ["../frontend/dist", "../frontend/build", "../frontend", "static", "frontend"]
     
     for frontend_dir in frontend_paths:
-        file_path = f"{frontend_dir}/{full_path}"
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            return FileResponse(file_path)
+        asset_path = f"{frontend_dir}/assets/{file_path}"
+        if os.path.exists(asset_path) and os.path.isfile(asset_path):
+            return FileResponse(asset_path)
     
-    # Возвращаем index.html для SPA маршрутизации
+    raise HTTPException(status_code=404, detail="Asset not found")
+
+# Главная страница фронтенда
+@app.get("/")
+async def serve_index():
+    """Обслуживает главную страницу фронтенда"""
+    frontend_paths = ["../frontend/dist", "../frontend/build", "../frontend", "static", "frontend"]
+    
+    for frontend_dir in frontend_paths:
+        index_path = f"{frontend_dir}/index.html"
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+    
+    # Fallback на API информацию если фронтенд не найден
+    return {
+        "message": "YouTube Comment Analyzer API - Enhanced with Real NLP",
+        "youtube_api_available": youtube_service.youtube is not None,
+        "gemini_api_available": gemini_service.model is not None,
+        "gemini_model": gemini_service.model_name if gemini_service.model else None
+    }
+
+# Catch-all для SPA роутинга (только для не-API путей)
+@app.get("/{full_path:path}")
+async def serve_spa_routes(full_path: str):
+    """Обслуживает SPA роуты фронтенда"""
+    # Если это API запрос, возвращаем 404
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # Для всех остальных путей возвращаем index.html (SPA роутинг)
+    frontend_paths = ["../frontend/dist", "../frontend/build", "../frontend", "static", "frontend"]
+    
     for frontend_dir in frontend_paths:
         index_path = f"{frontend_dir}/index.html"
         if os.path.exists(index_path):
