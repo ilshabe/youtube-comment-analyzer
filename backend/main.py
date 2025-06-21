@@ -476,15 +476,12 @@ async def serve_index():
         "gemini_model": gemini_service.model_name if gemini_service.model else None
     }
 
-# Catch-all для SPA роутинга (только для не-API путей)
-@app.get("/{full_path:path}")
-async def serve_spa_routes(full_path: str):
-    """Обслуживает SPA роуты фронтенда"""
-    # Если это API запрос, возвращаем 404
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API endpoint not found")
-    
-    # Для всех остальных путей возвращаем index.html (SPA роутинг)
+# Специфичные SPA роуты (добавляйте по мере необходимости)
+@app.get("/dashboard")
+@app.get("/settings") 
+@app.get("/about")
+async def serve_spa_routes():
+    """Обслуживает известные SPA роуты"""
     frontend_paths = ["../frontend/dist", "../frontend/build", "../frontend", "static", "frontend"]
     
     for frontend_dir in frontend_paths:
