@@ -44,11 +44,17 @@ if os.path.exists("static"):
 # Загружаем переменные окружения
 # Сначала пробуем .env.local (для разработки), потом .env (для продакшена)
 if os.path.exists('.env.local'):
-    load_dotenv('.env.local')
-    safe_print("Loaded environment from .env.local (development)")
+    try:
+        load_dotenv('.env.local')
+        safe_print("Loaded environment from .env.local (development)")
+    except UnicodeDecodeError:
+        safe_print("Warning: .env.local file has encoding issues, using system environment variables")
 elif os.path.exists('.env'):
-    load_dotenv('.env')
-    safe_print("Loaded environment from .env (production)")
+    try:
+        load_dotenv('.env')
+        safe_print("Loaded environment from .env (production)")
+    except UnicodeDecodeError:
+        safe_print("Warning: .env file has encoding issues, using system environment variables")
 else:
     safe_print("No .env file found, using system environment variables")
 
