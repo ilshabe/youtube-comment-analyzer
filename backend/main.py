@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -27,6 +27,9 @@ from youtube_service import YouTubeService
 from gemini_service import GeminiService
 
 app = FastAPI(title="YouTube Comment Analyzer API")
+
+# Создаем отдельный роутер для API
+api_router = APIRouter(prefix="/api")
 
 # Настройка CORS для работы с фронтендом
 app.add_middleware(
@@ -456,6 +459,17 @@ async def serve_assets(file_path: str):
             return FileResponse(asset_path)
     
     raise HTTPException(status_code=404, detail="Asset not found")
+
+# Тестовый API endpoint (работал раньше)
+@app.get("/test-api")
+async def test_api():
+    return {
+        "message": "YouTube Comment Analyzer API - Enhanced with Real NLP",
+        "youtube_api_available": youtube_service.youtube is not None,
+        "gemini_api_available": gemini_service.model is not None,
+        "gemini_model": gemini_service.model_name if gemini_service.model else None,
+        "status": "API is working!"
+    }
 
 # Главная страница фронтенда
 @app.get("/")
