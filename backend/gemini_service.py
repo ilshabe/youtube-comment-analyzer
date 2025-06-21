@@ -10,27 +10,16 @@ import time
 
 class GeminiService:
     def __init__(self, api_key: Optional[str] = None):
-        # Получаем API ключи из переменных окружения или используем дефолтные
+        # Получаем API ключи ТОЛЬКО из переменных окружения (безопасно)
         gemini_keys_env = os.getenv("GEMINI_API_KEYS", "")
         
         if gemini_keys_env:
             # Если есть переменная окружения с ключами (через запятую)
             self.api_keys = [key.strip() for key in gemini_keys_env.split(",") if key.strip()]
         else:
-            # Fallback на дефолтные ключи
-            self.api_keys = [
-                "AIzaSyB9DLY9MiEx21zUXOWuTPU8tqo_sbrxr_8",  # Основной ключ
-                "AIzaSyC-11u9fwgtfK3mLjYDezerzbqUqa67Yps",
-                "AIzaSyAx9IrgubWTwB1ELYAQ6-wu2X24crdxdjk", 
-                "AIzaSyBRm-3gh5VG2oxgPNq_m9_bcEmUOmEgYZ0",
-                "AIzaSyBdWKjNY2yZ7087a3Rm0gNsKyQAuCKmb5M",
-                "AIzaSyC6-QOpgF_7D9gAvo9CiJ8ehTf0uNMKrPE",
-                "AIzaSyBitJDtoH-Cc7EepzdgyroESOO9p_FW564",
-                "AIzaSyCO-kKSTC64KpcaB-a8o27Y85Y5dcIpd-I",
-                "AIzaSyBPG6CXxoahn7Xt3umb4rMUw2L-QPUMQHM",
-                "AIzaSyAVcxyvGYuJJ2nuNuomUoXZHve4iDHgUMY",
-                "AIzaSyAk7pbBiFzlzeqlwWKorl0HQKJftwS4es8"
-            ]
+            # НЕТ дефолтных ключей - только из переменных окружения
+            self.api_keys = []
+            print("WARNING: No GEMINI_API_KEYS found in environment variables")
         
         print(f"Loaded {len(self.api_keys)} Gemini API keys for rotation")
         self.current_key_index = 0

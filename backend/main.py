@@ -43,8 +43,8 @@ if os.path.exists("static"):
 
 # Загружаем переменные окружения
 load_dotenv()
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "AIzaSyDWQrXquS5_nBWdf-5nnJT5pQNB4heh7Q8")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyB9DLY9MiEx21zUXOWuTPU8tqo_sbrxr_8")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_API_KEYS = os.getenv("GEMINI_API_KEYS", "")
 safe_print(f"YOUTUBE_API_KEY loaded: {YOUTUBE_API_KEY}")
 safe_print(f"GEMINI_API_KEY loaded: {GEMINI_API_KEY[:10]}..." if GEMINI_API_KEY else "GEMINI_API_KEY not loaded")
