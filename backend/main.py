@@ -503,6 +503,17 @@ if __name__ == "__main__":
     
     # Render автоматически устанавливает PORT, локально используем 8000
     port = int(os.environ.get("PORT", 8000))
-    print(f"🚀 Starting YouTube Comment Analyzer on port {port}")
-    print(f"🌐 Environment: {'Production' if os.environ.get('PORT') else 'Development'}")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    safe_print(f"🚀 Starting YouTube Comment Analyzer on port {port}")
+    safe_print(f"🌐 Environment: {'Production' if os.environ.get('PORT') else 'Development'}")
+    safe_print(f"🔗 Binding to host: 0.0.0.0:{port}")
+    
+    # Запускаем с правильными параметрами для Render
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=port, 
+        log_level="info",
+        access_log=True,
+        server_header=False,
+        date_header=False
+    )
