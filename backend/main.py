@@ -40,22 +40,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключаем статические файлы (фронтенд)
-# Проверяем разные возможные пути к собранному фронтенду
-if os.path.exists("../frontend/dist"):
-    app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")
-    safe_print("Frontend mounted from ../frontend/dist")
-elif os.path.exists("../frontend/build"):
-    app.mount("/", StaticFiles(directory="../frontend/build", html=True), name="frontend")
-    safe_print("Frontend mounted from ../frontend/build")
-elif os.path.exists("../frontend"):
-    app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
-    safe_print("Frontend mounted from ../frontend")
-elif os.path.exists("static"):
-    app.mount("/", StaticFiles(directory="static", html=True), name="static")
-    safe_print("Frontend mounted from static")
-else:
-    safe_print("No frontend directory found")
+# НЕ монтируем фронтенд автоматически - это блокирует API
+safe_print("Frontend will be served via routes, not mounted")
 
 # Загружаем переменные окружения
 # Сначала пробуем .env.local (для разработки), потом .env (для продакшена)
@@ -458,18 +444,10 @@ async def test_api():
         "status": "API is working!"
     }
 
-# Главная страница фронтенда
-@app.get("/")
-async def serve_index():
-    """Обслуживает главную страницу фронтенда"""
-    frontend_paths = ["../frontend/dist", "../frontend/build", "../frontend", "static", "frontend"]
-    
-    for frontend_dir in frontend_paths:
-        index_path = f"{frontend_dir}/index.html"
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-    
-    # Fallback на API информацию если фронтенд не найден
+# API корневой endpoint (для проверки)
+@app.get("/api-status")
+async def api_status():
+    """API статус - НЕ конфликтует с фронтендом"""
     return {
         "message": "YouTube Comment Analyzer API - Enhanced with Real NLP",
         "youtube_api_available": youtube_service.youtube is not None,
@@ -477,12 +455,10 @@ async def serve_index():
         "gemini_model": gemini_service.model_name if gemini_service.model else None
     }
 
-# Специфичные SPA роуты (добавляйте по мере необходимости)
-@app.get("/dashboard")
-@app.get("/settings") 
-@app.get("/about")
-async def serve_spa_routes():
-    """Обслуживает известные SPA роуты"""
+# Главная страница фронтенда - ТОЛЬКО для корня
+@app.get("/")
+async def serve_index():
+    """Обслуживает ТОЛЬКО главную страницу"""
     frontend_paths = ["../frontend/dist", "../frontend/build", "../frontend", "static", "frontend"]
     
     for frontend_dir in frontend_paths:
@@ -490,7 +466,10 @@ async def serve_spa_routes():
         if os.path.exists(index_path):
             return FileResponse(index_path)
     
-    raise HTTPException(status_code=404, detail="Frontend not found")
+    # Fallback на API информацию
+    return {"error": "Frontend not found", "api_available": True}
+
+# УБИРАЕМ все дополнительные роуты которые могут конфликтовать
 
 if __name__ == "__main__":
     import uvicorn
